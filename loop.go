@@ -5,15 +5,23 @@ import (
 	"time"
 )
 
-type Loop struct {
+type Loop interface {
+	Running() bool
+
+	Start() bool
+
+	Stop()
+}
+
+type loop struct {
 	duration time.Duration
 	running  int32
 	queue    EventQueue
-	callback func(loop *Loop)
+	callback func(loop Loop)
 }
 
-func NewLoop(d time.Duration, queue EventQueue, callback func(loop *Loop)) *Loop {
-	var t = &Loop{}
+func NewLoop(d time.Duration, queue EventQueue, callback func(loop Loop)) Loop {
+	var t = &loop{}
 	t.duration = d
 	t.running = 0
 	t.queue = queue
@@ -21,11 +29,11 @@ func NewLoop(d time.Duration, queue EventQueue, callback func(loop *Loop)) *Loop
 	return t
 }
 
-func (this *Loop) Running() bool {
+func (this *loop) Running() bool {
 	return atomic.LoadInt32(&this.running) == 1
 }
 
-func (this *Loop) Start() bool {
+func (this *loop) Start() bool {
 	if this.duration <= 0 {
 		return false
 	}
@@ -39,19 +47,19 @@ func (this *Loop) Start() bool {
 	return true
 }
 
-func (this *Loop) Stop() {
+func (this *loop) Stop() {
 	if old := atomic.SwapInt32(&this.running, 0); old != 1 {
 		return
 	}
 }
 
-func (this *Loop) enqueue() {
+func (this *loop) enqueue() {
 	if this.Running() {
 		after(this.duration, this.queue, this.exec)
 	}
 }
 
-func (this *Loop) exec() {
+func (this *loop) exec() {
 	if this.Running() {
 		defer this.enqueue()
 	}
