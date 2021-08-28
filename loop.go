@@ -9,10 +9,10 @@ type Loop struct {
 	duration time.Duration
 	running  int32
 	queue    EventQueue
-	callback func()
+	callback func(loop *Loop)
 }
 
-func NewLoop(d time.Duration, queue EventQueue, callback func()) *Loop {
+func NewLoop(d time.Duration, queue EventQueue, callback func(loop *Loop)) *Loop {
 	var t = &Loop{}
 	t.duration = d
 	t.running = 0
@@ -47,9 +47,7 @@ func (this *Loop) Stop() {
 
 func (this *Loop) enqueue() {
 	if this.Running() {
-		after(this.duration, this.queue, func() {
-			this.exec()
-		})
+		after(this.duration, this.queue, this.exec)
 	}
 }
 
@@ -57,7 +55,7 @@ func (this *Loop) exec() {
 	if this.Running() {
 		defer this.enqueue()
 	}
-	this.callback()
+	this.callback(this)
 }
 
 func after(d time.Duration, q EventQueue, callback func()) {
